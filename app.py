@@ -1,4 +1,29 @@
 import streamlit as st
+import numpy as np
+
+def get_previous_average(charge_name):
+    fake_history = {
+        "Energy Charge": 40,
+        "Delivery Charge": 10,
+        "Service Fee": 5,
+        "Tax": 6
+    }
+    return fake_history.get(charge_name, 0)
+
+def detect_anomaly(name, current_value):
+    previous_avg = get_previous_average(name)
+
+    if previous_avg == 0:
+        return "No reference data"
+
+    change = ((current_value - previous_avg) / previous_avg) * 100
+
+    if change > 20:
+        return f"High increase (+{change:.1f}%)"
+    elif change < -20:
+        return f"Unusually low ({change:1f}%)"
+    else:
+        return f"Normal ({change:.1f}%)"
 
 def explain_charges(name):
     explanations = {
@@ -43,8 +68,14 @@ if uploaded_file is not None:
 
     charges = extract_charges(content)
 
-    st.subheader("Explained Bill")
+    st.subheader("AI Insights (Anomaly Detection)")
 
     for name, value in charges.items():
         explanation = explain_charges(name)
-        st.write(f"{name}: €{value} → {explanation}")
+        anomaly = detect_anomaly(name, value)
+
+        st.write(f"""
+        **{name}**: €{value}
+        → {explanation}
+        → {anomaly}
+        """)
