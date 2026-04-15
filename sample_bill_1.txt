@@ -1,0 +1,6 @@
+Electricity Bill
+
+Energy Charge: 42
+Delivery Charge: 9
+Tax: 15
+Total: 66:00

@@ -1,9 +1,26 @@
+import pandas as pd
 import json
 import os
 from datetime import datetime
 from sklearn.ensemble import IsolationForest
 import streamlit as st
 import numpy as np
+
+# Convert history to dataframe
+def history_to_df(history):
+    rows = []
+
+    for item in history:
+        timestamp = item["timestamp"]
+
+        for name, value in item["charges"].items():
+            rows.append({
+                "timestamp": timestamp,
+                "charge": name,
+                "value": value
+            })
+
+    return pd.DataFrame(rows)
 
 # Load history
 def load_history():
@@ -140,3 +157,21 @@ if uploaded_file is not None:
             st.write(f"{item['timestamp']}")
             st.write(item["charges"])
             st.write("---")
+
+    st.subheader("Analytics Dashboard")
+
+    if len(history) > 0:
+        df = history_to_df(history)
+
+        # Chart 1: Total per charge type
+        st.write("### Spending by category")
+        category_sum = df.groupby("charge")["value"].sum()
+        st.bar_chart(category_sum)
+
+        # Chart 2: Trend over time
+        st.write("### Spending Over Time")
+        time_sum = df.groupby("timestamp")["value"].sum()
+        st.line_chart(time_sum)
+
+    else:
+        st.write("No data available for charts yet.")

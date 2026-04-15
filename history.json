@@ -29,5 +29,50 @@
             "Tax": 6.3,
             "Total": 64.0
         }
+    },
+    {
+        "timestamp": "2026-04-15 17:47:00",
+        "charges": {
+            "Energy Charge": 45.2,
+            "Delivery Charge": 12.5,
+            "Tax": 6.3,
+            "Total": 64.0
+        }
+    },
+    {
+        "timestamp": "2026-04-15 18:10:47",
+        "charges": {
+            "Energy Charge": 45.2,
+            "Delivery Charge": 12.5,
+            "Tax": 6.3,
+            "Total": 64.0
+        }
+    },
+    {
+        "timestamp": "2026-04-15 18:15:09",
+        "charges": {
+            "Energy Charge": 45.2,
+            "Delivery Charge": 12.5,
+            "Tax": 6.3,
+            "Total": 64.0
+        }
+    },
+    {
+        "timestamp": "2026-04-15 18:15:36",
+        "charges": {
+            "Energy Charge": 42.0,
+            "Delivery Charge": 9.0,
+            "Tax": 15.0,
+            "Total": 66.0
+        }
+    },
+    {
+        "timestamp": "2026-04-15 18:15:56",
+        "charges": {
+            "Energy Charge": 500.0,
+            "Delivery Charge": 100.0,
+            "Tax": 300.0,
+            "Total": 900.0
+        }
     }
 ]
