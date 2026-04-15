@@ -1,5 +1,20 @@
+from sklearn.ensemble import IsolationForest
 import streamlit as st
 import numpy as np
+
+def train_model():
+    # normal bill patterns (example data)
+    data = np.array([
+        [40], [42], [38], [41], [39],
+        [10], [11], [9], [10.5],
+        [5], [5.5], [4.8], [6],
+        [6], [6.2], [5.8]
+    ])
+
+    model = IsolationForest(contamination=0.1, random_state=42)
+    model.fit(data)
+
+    return model
 
 def get_previous_average(charge_name):
     fake_history = {
@@ -10,20 +25,15 @@ def get_previous_average(charge_name):
     }
     return fake_history.get(charge_name, 0)
 
-def detect_anomaly(name, current_value):
-    previous_avg = get_previous_average(name)
+model = train_model()
 
-    if previous_avg == 0:
-        return "No reference data"
+def detect_anomaly_ml(value):
+    prediction = model.predict([[value]])
 
-    change = ((current_value - previous_avg) / previous_avg) * 100
-
-    if change > 20:
-        return f"High increase (+{change:.1f}%)"
-    elif change < -20:
-        return f"Unusually low ({change:1f}%)"
+    if prediction[0] == -1:
+        return "Unusual value detected (ML anomaly)"
     else:
-        return f"Normal ({change:.1f}%)"
+        return "Normal pattern (ML)"
 
 def explain_charges(name):
     explanations = {
@@ -68,11 +78,11 @@ if uploaded_file is not None:
 
     charges = extract_charges(content)
 
-    st.subheader("AI Insights (Anomaly Detection)")
+    st.subheader("AI Insights (ML Anomaly Detection)")
 
     for name, value in charges.items():
         explanation = explain_charges(name)
-        anomaly = detect_anomaly(name, value)
+        anomaly = detect_anomaly_ml(value)
 
         st.write(f"""
         **{name}**: €{value}
