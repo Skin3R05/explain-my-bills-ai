@@ -1,185 +1,76 @@
-import pandas as pd
-import json
-import os
-from datetime import datetime
-from sklearn.ensemble import IsolationForest
 import streamlit as st
-import numpy as np
 
-# Convert history to dataframe
-def history_to_df(history):
-    rows = []
-
-    for item in history:
-        timestamp = item["timestamp"]
-
-        for name, value in item["charges"].items():
-            rows.append({
-                "timestamp": timestamp,
-                "charge": name,
-                "value": value
-            })
-
-    return pd.DataFrame(rows)
-
-# Load history
-def load_history():
-    if os.path.exists("history.json"):
-        with open("history.json", "r") as f:
-            return json.load(f)
-    return []
-
-# Save history
-def save_history(entry):
-    history = load_history()
-    history.append(entry)
-
-    with open("history.json", "w") as f:
-        json.dump(history, f, indent=4)
-
-def train_model_from_history(history):
-    rows = []
-
-    for item in history:
-        for name, value in item["charges"].items():
-            rows.append([value])
-
-    if len(rows) < 5:
-        return None  # not enough data yet
-
-    data = np.array(rows)
-
-    model = IsolationForest(contamination=0.1, random_state=42)
-    model.fit(data)
-
-    return model
-
-
-def get_previous_average(charge_name):
-    fake_history = {
-        "Energy Charge": 40,
-        "Delivery Charge": 10,
-        "Service Fee": 5,
-        "Tax": 6
-    }
-    return fake_history.get(charge_name, 0)
-
-history = load_history()
-model = train_model_from_history(history)
-
-def detect_anomaly_ml(value):
-    if model is None:
-        return "Not enough data for ML yet"
-
-    prediction = model.predict([[value]])
-
-    if prediction[0] == -1:
-        return "Unusual value detected (ML anomaly)"
-    else:
-        return "Normal pattern (ML)"
-
-def explain_charges(name, value):
-    base_meanings = {
-        "Energy Charge": "This represents the cost based on your electricity usage.",
-        "Delivery Charge": "This covers the infrastructure and delivery of electricity to your home.",
-        "Service Fee": "This is a fixed operational and maintenance fee.",
-        "Tax": "This is a government-imposed tax on your total usage.",
-        "Total": "This is the final amount you need to pay."
-    }
-
-    explanation = base_meanings.get(name, "This is a billing-related charge from your provider.")
-
-    if value > 50:
-        explanation += " It is relatively high compared to typical values."
-    elif value < 10:
-        explanation += " It is a low-cost component of your bill."
-
-    return explanation
-
-def interpret_anomaly(name, value, result):
-    if result == "Unusual value detected (ML anomaly)":
-        return f"{result} → This charge deviates from normal patterns and may require attention."
-    else:
-        return f"{result} → This value is within expected billing range."
-
-def extract_charges(text):
-    charges = {}
-
-    lines = text.split("\n")
-
-    for line in lines:
-        if ":" in line:
-            parts = line.split(":")
-
-            name = parts[0].strip()
-            value = parts[1].strip()
-
-            try:
-                charges[name] = float(value)
-            except:
-                pass
-
-    return charges
+from src.services.analytics import history_to_df
+import pandas as pd
+from src.data.storage import load_history, save_history
+from src.data.parser import extract_charges
+from src.ml.anomaly_model import AnomalyModel
+from src.services.billing import explain_charge, interpret_anomaly
 
 st.title("Explain My Bill AI")
-st.write("Upload your bill file below")
 
-uploaded_file = st.file_uploader("Upload your bill (.txt)", type=["txt"])
+uploaded_file = st.file_uploader("Upload bill (.txt)", type=["txt"])
 
-if uploaded_file is not None:
+model = AnomalyModel()
+
+history = load_history()
+model.train(history)
+
+if uploaded_file:
+
     content = uploaded_file.read().decode("utf-8")
-
-    st.subheader("Raw Bill Content")
+    st.write("### Raw Bill")
     st.write(content)
 
     charges = extract_charges(content)
 
-    st.subheader("AI Insights (Smart Engine)")
+    st.write("### Insights")
 
     for name, value in charges.items():
-        explanation = explain_charges(name, value)
-        anomaly = detect_anomaly_ml(value)
-        final_anomaly = interpret_anomaly(name, value, anomaly)
+
+        explanation = explain_charge(name, value)
+        anomaly = model.predict(value)
+        final = interpret_anomaly(anomaly)
 
         st.write(f"""
-        **{name}**: €{value}
-        → {explanation}
-        → {final_anomaly}
+        **{name}: €{value}**
+
+        {explanation}
+
+        {final}
         """)
 
-    entry = {
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "charges": charges
-    }
+    save_history(charges)
 
-    save_history(entry)
+    st.success("Saved to history!")
 
-    st.subheader("Bill History")
+# History
+st.write("## Last 5 Records")
 
-    history = load_history()
+for item in reversed(history[-5:]):
+    st.write(item)
+    st.write("---")
 
-    if len(history) == 0:
-        st.write("No history yet.")
-    else:
-        for item in reversed(history[-5:]):
-            st.write(f"{item['timestamp']}")
-            st.write(item["charges"])
-            st.write("---")
+# Analytics
+st.write("## Analytics Dashboard")
 
-    st.subheader("Analytics Dashboard")
+history = load_history()
 
-    if len(history) > 0:
-        df = history_to_df(history)
+if len(history) > 0:
 
-        # Chart 1: Total per charge type
-        st.write("### Spending by category")
-        category_sum = df.groupby("charge")["value"].sum()
-        st.bar_chart(category_sum)
+    df = history_to_df(history)
 
-        # Chart 2: Trend over time
-        st.write("### Spending Over Time")
-        time_sum = df.groupby("timestamp")["value"].sum()
-        st.line_chart(time_sum)
+    # Ensure timestamp is readable
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
 
-    else:
-        st.write("No data available for charts yet.")
+    st.write("### Spending by category")
+    category_sum = df.groupby("charge")["value"].sum()
+    st.bar_chart(category_sum)
+
+    st.write("### Spending over time")
+    df["date"] = df["timestamp"].dt.date
+    time_sum = df.groupby("date")["value"].sum()
+    st.line_chart(time_sum)
+
+else:
+    st.write("No data available yet.")
