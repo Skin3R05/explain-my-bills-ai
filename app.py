@@ -35,16 +35,29 @@ def detect_anomaly_ml(value):
     else:
         return "Normal pattern (ML)"
 
-def explain_charges(name):
-    explanations = {
-        "Energy Charge": "Cost of electricity you used.",
-        "Delivery Charge": "Cost of delivering electricity to your home.",
-        "Service Fee": "Fixed service/maintenance fee.",
-        "Tax": "Government tax applied to your bill.",
-        "Total": "Total amount you need to pay."
+def explain_charges(name, value):
+    base_meanings = {
+        "Energy Charge": "This represents the cost based on your electricity usage.",
+        "Delivery Charge": "This covers the infrastructure and delivery of electricity to your home.",
+        "Service Fee": "This is a fixed operational and maintenance fee.",
+        "Tax": "This is a government-imposed tax on your total usage.",
+        "Total": "This is the final amount you need to pay."
     }
 
-    return explanations.get(name, "No explanations available.")
+    explanation = base_meanings.get(name, "This is a billing-related charge from your provider.")
+
+    if value > 50:
+        explanation += " It is relatively high compared to typical values."
+    elif value < 10:
+        explanation += " It is a low-cost component of your bill."
+
+    return explanation
+
+def interpret_anomaly(name, value, result):
+    if result == "Unusual value detected (ML anomaly)":
+        return f"{result} → This charge deviates from normal patterns and may require attention."
+    else:
+        return f"{result} → This value is within expected billing range."
 
 def extract_charges(text):
     charges = {}
@@ -78,14 +91,15 @@ if uploaded_file is not None:
 
     charges = extract_charges(content)
 
-    st.subheader("AI Insights (ML Anomaly Detection)")
+    st.subheader("AI Insights (Smart Engine)")
 
     for name, value in charges.items():
-        explanation = explain_charges(name)
+        explanation = explain_charges(name, value)
         anomaly = detect_anomaly_ml(value)
+        final_anomaly = interpret_anomaly(name, value, anomaly)
 
         st.write(f"""
         **{name}**: €{value}
         → {explanation}
-        → {anomaly}
+        → {final_anomaly}
         """)
