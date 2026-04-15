@@ -1,0 +1,33 @@
+[
+    {
+        "timestamp": "2026-04-15 17:17:21",
+        "charges": {
+            "Energy Charge": 45.2,
+            "Delivery Charge": 12.5,
+            "Tax": 6.3,
+            "Total": 64.0
+        }
+    },
+    {
+        "timestamp": "2026-04-15 17:17:33",
+        "charges": {
+            "Energy Charge": 45.2,
+            "Delivery Charge": 12.5,
+            "Tax": 6.3,
+            "Total": 64.0
+        }
+    },
+    {
+        "timestamp": "2026-04-15 17:17:57",
+        "charges": {}
+    },
+    {
+        "timestamp": "2026-04-15 17:18:19",
+        "charges": {
+            "Energy Charge": 45.2,
+            "Delivery Charge": 12.5,
+            "Tax": 6.3,
+            "Total": 64.0
+        }
+    }
+]

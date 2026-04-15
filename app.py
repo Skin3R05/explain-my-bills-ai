@@ -1,6 +1,24 @@
+import json
+import os
+from datetime import datetime
 from sklearn.ensemble import IsolationForest
 import streamlit as st
 import numpy as np
+
+# Load history
+def load_history():
+    if os.path.exists("history.json"):
+        with open("history.json", "r") as f:
+            return json.load(f)
+    return []
+
+# Save history
+def save_history(entry):
+    history = load_history()
+    history.append(entry)
+
+    with open("history.json", "w") as f:
+        json.dump(history, f, indent=4)
 
 def train_model():
     # normal bill patterns (example data)
@@ -103,3 +121,22 @@ if uploaded_file is not None:
         → {explanation}
         → {final_anomaly}
         """)
+
+    entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "charges": charges
+    }
+
+    save_history(entry)
+
+    st.subheader("Bill History")
+
+    history = load_history()
+
+    if len(history) == 0:
+        st.write("No history yet.")
+    else:
+        for item in reversed(history[-5:]):
+            st.write(f"{item['timestamp']}")
+            st.write(item["charges"])
+            st.write("---")
