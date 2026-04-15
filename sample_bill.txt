@@ -1,6 +1,6 @@
 Electricity Bill
 
-Energy Vharge: 45.20
+Energy Charge: 45.20
 Delivery Charge: 12.50
 Tax: 6.30
 Total: 64:00

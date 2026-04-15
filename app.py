@@ -1,5 +1,16 @@
 import streamlit as st
 
+def explain_charges(name):
+    explanations = {
+        "Energy Charge": "Cost of electricity you used.",
+        "Delivery Charge": "Cost of delivering electricity to your home.",
+        "Service Fee": "Fixed service/maintenance fee.",
+        "Tax": "Government tax applied to your bill.",
+        "Total": "Total amount you need to pay."
+    }
+
+    return explanations.get(name, "No explanations available.")
+
 def extract_charges(text):
     charges = {}
 
@@ -32,5 +43,8 @@ if uploaded_file is not None:
 
     charges = extract_charges(content)
 
-    st.subheader("Extracted Charges")
-    st.write(charges)
+    st.subheader("Explained Bill")
+
+    for name, value in charges.items():
+        explanation = explain_charges(name)
+        st.write(f"{name}: €{value} → {explanation}")
