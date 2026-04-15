@@ -74,5 +74,14 @@
             "Tax": 300.0,
             "Total": 900.0
         }
+    },
+    {
+        "timestamp": "2026-04-15 18:29:08",
+        "charges": {
+            "Energy Charge": 45.2,
+            "Delivery Charge": 12.5,
+            "Tax": 6.3,
+            "Total": 64.0
+        }
     }
 ]

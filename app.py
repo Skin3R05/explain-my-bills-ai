@@ -37,19 +37,23 @@ def save_history(entry):
     with open("history.json", "w") as f:
         json.dump(history, f, indent=4)
 
-def train_model():
-    # normal bill patterns (example data)
-    data = np.array([
-        [40], [42], [38], [41], [39],
-        [10], [11], [9], [10.5],
-        [5], [5.5], [4.8], [6],
-        [6], [6.2], [5.8]
-    ])
+def train_model_from_history(history):
+    rows = []
+
+    for item in history:
+        for name, value in item["charges"].items():
+            rows.append([value])
+
+    if len(rows) < 5:
+        return None  # not enough data yet
+
+    data = np.array(rows)
 
     model = IsolationForest(contamination=0.1, random_state=42)
     model.fit(data)
 
     return model
+
 
 def get_previous_average(charge_name):
     fake_history = {
@@ -60,9 +64,13 @@ def get_previous_average(charge_name):
     }
     return fake_history.get(charge_name, 0)
 
-model = train_model()
+history = load_history()
+model = train_model_from_history(history)
 
 def detect_anomaly_ml(value):
+    if model is None:
+        return "Not enough data for ML yet"
+
     prediction = model.predict([[value]])
 
     if prediction[0] == -1:
