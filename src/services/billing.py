@@ -1,65 +1,75 @@
-def explain_charge(name, value):
-    base = {
-        "Energy Charge": "Cost based on electricity usage.",
-        "Delivery Charge": "Infrastructure and delivery cost.",
-        "Service Fee": "Operational maintenance fee.",
-        "Tax": "Government tax on usage."
-    }
-
-    text = base.get(name, "Billing-related charge.")
-
-    if value > 50:
-        text += " High compared to normal."
-    elif value < 10:
-        text += " Low-cost component."
-
-    return text
+import pandas as pd
 
 
-def interpret_anomaly(result):
-    if "Anomaly" in result:
-        return result + " → Needs attention."
-    return result + " → Within expected range."
+def explain_charge(name: str, value: float) -> str:
+    """Return a human-readable label for a charge line item."""
+    return f"{name.title()} charge recorded as €{value:.2f}."
 
-def explain_anomaly_reason(df, charge_name, value):
-    # filter same charge history (correct column)
+
+def interpret_anomaly(anomaly: str) -> str:
+    """Convert a model prediction string into a display label."""
+    if anomaly == "Anomaly detected":
+        return "🔴 Anomaly detected"
+    if anomaly == "Not enough data for ML":
+        return "⚪ Insufficient history"
+    return "🟢 Normal pattern"
+
+
+def explain_anomaly_reason(df: pd.DataFrame, charge_name: str, value: float) -> str:
+    """
+    Generate a plain-language explanation comparing `value` against
+    the historical average for `charge_name`.
+    """
+    if df is None or df.empty:
+        return "⚠️ No historical data available for comparison."
+
+    if "charge" not in df.columns or "value" not in df.columns:
+        return "⚠️ Invalid dataset format."
+
     charge_df = df[df["charge"] == charge_name]
 
-    if df is None or df.empty:
-        return "No historical data available for comparison."
-
-    if charge_df.empty or len(charge_df) < 3:
-        return "⚠️ Not enough historical data for reliable comparison."
+    if len(charge_df) < 3:
+        return "⚠️ Not enough historical data for comparison (need at least 3 records)."
 
     avg = charge_df["value"].mean()
     std = charge_df["value"].std()
 
     if avg == 0:
-        return "⚠️ No baseline available for comparison."
+        return "⚠️ No baseline available — historical average is zero."
 
     diff_percent = ((value - avg) / avg) * 100
 
-    # 🔥 NEW: spike detection using variability (IMPORTANT FIX)
+    # Spike: more than 2 standard deviations above mean
     if std > 0 and value > avg + 2 * std:
         return (
-            f"🔴 Unusual spike detected. "
-            f"Typical: €{avg:.2f}, now: €{value:.2f}."
+            f"🔴 Unusual spike detected for {charge_name.title()}. "
+            f"Typical: €{avg:.2f}, current: €{value:.2f} "
+            f"(+{diff_percent:.1f}% above average)."
         )
 
-    # normal range
     if abs(diff_percent) <= 15:
-        return f"🟢 Value is consistent with your usual pattern (avg €{avg:.2f})."
+        return f"🟢 {charge_name.title()} is consistent with your usual pattern (avg €{avg:.2f})."
 
-    # moderate anomaly
-    elif 15 < diff_percent <= 40:
-        return f"🟡 Higher than usual by {diff_percent:.1f}% (avg €{avg:.2f})."
+    if 15 < diff_percent <= 40:
+        return (
+            f"🟡 {charge_name.title()} is moderately higher than usual "
+            f"(+{diff_percent:.1f}% vs avg €{avg:.2f})."
+        )
 
-    elif -40 <= diff_percent < -15:
-        return f"🟡 Lower than usual by {abs(diff_percent):.1f}% (avg €{avg:.2f})."
+    if -40 <= diff_percent < -15:
+        return (
+            f"🟡 {charge_name.title()} is moderately lower than usual "
+            f"({diff_percent:.1f}% vs avg €{avg:.2f})."
+        )
 
-    # strong anomaly
-    elif diff_percent > 40:
-        return f"🔴 Significantly higher than average (+{diff_percent:.1f}%) → avg €{avg:.2f}."
+    if diff_percent > 40:
+        return (
+            f"🔴 Significant increase for {charge_name.title()} "
+            f"(+{diff_percent:.1f}% vs avg €{avg:.2f})."
+        )
 
-    else:
-        return f"🔵 Significantly lower than average ({abs(diff_percent):.1f}%) → avg €{avg:.2f}."
+    # diff_percent < -40
+    return (
+        f"🔵 Significant decrease for {charge_name.title()} "
+        f"({diff_percent:.1f}% vs avg €{avg:.2f})."
+    )
