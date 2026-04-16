@@ -15,16 +15,29 @@ def history_to_df(history, model=None):
             })
 
     df = pd.DataFrame(rows)
+
     if df.empty:
         return df
-    
+
     df["timestamp"] = pd.to_datetime(df["timestamp"])
 
+    # 🔥 Per-charge anomaly detection
+    df["anomaly"] = 1  # default normal
+
     if model and model.model is not None:
-        df["anomaly"] = df["value"].apply(
-            lambda x: model.model.predict([[x]])[0]
-        )
-    else:
-        df["anomaly"] = 1 # default normal
+
+        for charge_type in df["charge"].unique():
+
+            subset = df[df["charge"] == charge_type]
+
+            values = subset["value"].values.reshape(-1, 1)
+
+            if len(values) >= 5:  # need enough data
+
+                model.model.fit(values)  # train per charge
+
+                preds = model.model.predict(values)
+
+                df.loc[subset.index, "anomaly"] = preds
 
     return df

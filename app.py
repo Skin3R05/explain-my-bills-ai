@@ -1,11 +1,13 @@
 import streamlit as st
 
+from src.data.database import init_db, save_charges, load_history
 from src.services.analytics import history_to_df
 import pandas as pd
-from src.data.storage import load_history, save_history
 from src.data.parser import extract_charges
 from src.ml.anomaly_model import AnomalyModel
 from src.services.billing import explain_charge, interpret_anomaly
+
+init_db()
 
 st.title("Explain My Bill AI")
 
@@ -40,7 +42,7 @@ if uploaded_file:
         {final}
         """)
 
-    save_history(charges)
+    save_charges(charges)
 
     st.success("Saved to history!")
 
