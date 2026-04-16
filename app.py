@@ -58,19 +58,28 @@ history = load_history()
 
 if len(history) > 0:
 
-    df = history_to_df(history)
+    df = history_to_df(history, model)
 
-    # Ensure timestamp is readable
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    if not df.empty:
+        df["date"] = df["timestamp"].dt.date
 
-    st.write("### Spending by category")
-    category_sum = df.groupby("charge")["value"].sum()
-    st.bar_chart(category_sum)
+        # Aggregate total per day
+        daily = df.groupby("date").agg({
+            "value": "sum",
+            "anomaly": "min"  # if any anomaly exists that day → mark it
+        }).reset_index()
 
-    st.write("### Spending over time")
-    df["date"] = df["timestamp"].dt.date
-    time_sum = df.groupby("date")["value"].sum()
-    st.line_chart(time_sum)
+        st.write("### Spending Over Time (Anomalies Highlighted)")
+
+        # Split normal vs anomaly
+        normal = daily[daily["anomaly"] == 1]
+        anomaly = daily[daily["anomaly"] == -1]
+
+        st.line_chart(normal.set_index("date")["value"])
+
+        if not anomaly.empty:
+            st.write("Anomalies detected on these dates:")
+            st.dataframe(anomaly)
 
 else:
     st.write("No data available yet.")
