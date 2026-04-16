@@ -1,13 +1,13 @@
 import streamlit as st
 
 from src.services.billing import explain_anomaly_reason
-from src.data.database import load_df
 from src.data.database import init_db, save_charges, load_history
 from src.services.analytics import history_to_df
-import pandas as pd
 from src.data.parser import extract_charges
 from src.ml.anomaly_model import AnomalyModel
 from src.services.billing import explain_charge, interpret_anomaly
+
+from datetime import datetime
 
 init_db()
 
@@ -21,21 +21,22 @@ st.set_page_config(
 st.title("💡 Explain My Bill AI")
 st.caption("AI-powered bill insights, anomaly detection & spending intelligence")
 
+# ================= MODEL =================
+model = AnomalyModel()
+
+# ================= LOAD HISTORY ONCE =================
+history = load_history()
+df_all = history_to_df(history, model)
+
+model.train(history)
+
+# ================= UTIL =================
+def anomaly_badge(val):
+    return "🔴 Anomaly" if val == -1 else "🟢 Normal"
+
 # ================= UPLOAD =================
 uploaded_file = st.file_uploader("📄 Upload your bill (.txt)", type=["txt"])
 
-model = AnomalyModel()
-
-history = load_history()
-model.train(history)
-
-# ================= UTIL: ANOMALY BADGE =================
-def anomaly_badge(val):
-    if val == -1:
-        return "🔴 Anomaly"
-    return "🟢 Normal"
-
-# ================= MAIN =================
 if uploaded_file:
 
     content = uploaded_file.read().decode("utf-8")
@@ -45,9 +46,16 @@ if uploaded_file:
 
     charges = extract_charges(content)
 
-    st.subheader("📊 AI Insights Dashboard")
+    # ================= SAVE DATA (IMPORTANT FIX) =================
+    save_charges(charges)
 
-    df_all = load_df()
+    st.success("Bill saved to history ✅")
+
+    # refresh history AFTER saving
+    history = load_history()
+    df_all = history_to_df(history, model)
+
+    st.subheader("📊 AI Insights Dashboard")
 
     total_bill = sum(charges.values())
 
@@ -67,7 +75,6 @@ if uploaded_file:
             with col1:
                 st.metric("Amount", f"€{value}")
                 st.progress(min(percent / 100, 1.0))
-
                 st.markdown(f"### {anomaly_badge(anomaly)}")
 
             with col2:
@@ -84,17 +91,20 @@ if uploaded_file:
 st.markdown("---")
 st.subheader("🕘 Recent Billing History")
 
-for item in reversed(history[-5:]):
-    st.json(item)
-    st.markdown("---")
+history = load_history()
+
+if history:
+    for item in reversed(history[-5:]):
+        st.json(item)
+        st.markdown("---")
+else:
+    st.info("No history yet")
 
 # ================= ANALYTICS =================
 st.markdown("---")
 st.subheader("📈 Spending Analytics Dashboard")
 
-history = load_history()
-
-if len(history) > 0:
+if history:
 
     df = history_to_df(history, model)
 

@@ -2,8 +2,18 @@ import pandas as pd
 
 
 def history_to_df(history, model=None):
+
+    # =========================
+    # EMPTY SAFETY
+    # =========================
+    if not history:
+        return pd.DataFrame(columns=["timestamp", "charge", "value", "anomaly"])
+
     rows = []
 
+    # =========================
+    # FLATTEN HISTORY
+    # =========================
     for item in history:
         timestamp = item["timestamp"]
 
@@ -17,27 +27,36 @@ def history_to_df(history, model=None):
     df = pd.DataFrame(rows)
 
     if df.empty:
-        return df
+        return pd.DataFrame(columns=["timestamp", "charge", "value", "anomaly"])
 
+    # =========================
+    # TYPE FIXES
+    # =========================
     df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df = df.sort_values("timestamp")
 
-    # 🔥 Per-charge anomaly detection
-    df["anomaly"] = 1  # default normal
+    # =========================
+    # DEFAULT ANOMALY
+    # =========================
+    df["anomaly"] = 1  # normal
 
-    if model and model.model is not None:
+    # =========================
+    # ML ANOMALY DETECTION (SAFE)
+    # =========================
+    if model and hasattr(model, "model") and model.model is not None:
 
         for charge_type in df["charge"].unique():
 
             subset = df[df["charge"] == charge_type]
 
+            # need enough data to be meaningful
+            if len(subset) < 5:
+                continue
+
             values = subset["value"].values.reshape(-1, 1)
 
-            if len(values) >= 5:  # need enough data
+            preds = model.model.fit_predict(values)
 
-                model.model.fit(values)  # train per charge
-
-                preds = model.model.predict(values)
-
-                df.loc[subset.index, "anomaly"] = preds
+            df.loc[subset.index, "anomaly"] = preds
 
     return df

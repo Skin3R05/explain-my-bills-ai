@@ -2,13 +2,22 @@ import sqlite3
 from datetime import datetime
 import pandas as pd
 
-# DATABASE LAYER
-
+# =========================
+# DATABASE CONFIG
+# =========================
 DB_PATH = "data/bills.db"
 
+
+# =========================
+# CONNECTION
+# =========================
 def get_connection():
     return sqlite3.connect(DB_PATH)
 
+
+# =========================
+# INIT DATABASE
+# =========================
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
@@ -18,15 +27,17 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT,
             charge_name TEXT,
-            value REAL    
-    )
+            value REAL
+        )
     """)
 
     conn.commit()
     conn.close()
 
-# SAVE DATA TO DB
 
+# =========================
+# SAVE BILL CHARGES
+# =========================
 def save_charges(charges: dict):
     conn = get_connection()
     cursor = conn.cursor()
@@ -35,20 +46,26 @@ def save_charges(charges: dict):
 
     for name, value in charges.items():
         cursor.execute("""
-        INSERT INTO bill_history (timestamp, charge_name, value)
-        VALUES (?, ?, ?)
+            INSERT INTO bill_history (timestamp, charge_name, value)
+            VALUES (?, ?, ?)
         """, (timestamp, name, value))
 
     conn.commit()
     conn.close()
 
-# LOAD DATA FROM DB
 
+# =========================
+# LOAD HISTORY (STRUCTURED)
+# =========================
 def load_history():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT timestamp, charge_name, value FROM bill_history")
+    cursor.execute("""
+        SELECT timestamp, charge_name, value
+        FROM bill_history
+        ORDER BY timestamp
+    """)
 
     rows = cursor.fetchall()
     conn.close()
@@ -61,21 +78,30 @@ def load_history():
 
         history[timestamp][charge] = value
 
-    # convert to your original format
     return [
         {"timestamp": ts, "charges": charges}
         for ts, charges in history.items()
     ]
 
 
-
+# =========================
+# LOAD FLAT DATAFRAME (ML READY)
+# =========================
 def load_df():
     conn = get_connection()
 
-    df = pd.read_sql_query(
-        "SELECT * FROM bill_history",
-        conn
-    )
+    df = pd.read_sql_query("""
+        SELECT
+            timestamp,
+            charge_name AS charge,
+            value
+        FROM bill_history
+        ORDER BY timestamp
+    """, conn)
 
     conn.close()
+
+    if not df.empty:
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+
     return df
